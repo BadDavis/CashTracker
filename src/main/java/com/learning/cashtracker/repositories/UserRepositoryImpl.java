@@ -2,7 +2,9 @@ package com.learning.cashtracker.repositories;
 
 import com.learning.cashtracker.entity.User;
 import com.learning.cashtracker.exceptions.EtAuthException;
+import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -23,12 +25,12 @@ public class UserRepositoryImpl implements UserRepository {
             "FROM ET_USERS WHERE EMAIL = ?";
 
 
-
     @Autowired
     JdbcTemplate jdbcTemplate;
 
     @Override
     public Integer create(String firstName, String lastName, String email, String password) throws EtAuthException {
+        String hashedPass = BCrypt.hashpw(password, BCrypt.gensalt(10));
         try {
             KeyHolder keyHolder = new GeneratedKeyHolder();
             jdbcTemplate.update(connection -> {
@@ -36,7 +38,7 @@ public class UserRepositoryImpl implements UserRepository {
                 ps.setString(1, firstName);
                 ps.setString(2, lastName);
                 ps.setString(3, email);
-                ps.setString(4, password);
+                ps.setString(4, hashedPass);
                 return ps;
             }, keyHolder);
             return (Integer) keyHolder.getKeys().get("USER_ID");
@@ -47,7 +49,13 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public User findByEmailAndPassword(String email, String password) throws EtAuthException {
-        return null;
+        try {
+            User user = jdbcTemplate.queryForObject(SQL_FIND_BY_EMAIL, new Object[]{email}, userRowMapper);
+            if (!BCrypt.checkpw(password, user.getPassword())) throw new EtAuthException("Invalid email/password");
+            return user;
+        } catch (EmptyResultDataAccessException e) {
+            throw new EtAuthException("Invalid email/password");
+        }
     }
 
     @Override
@@ -61,10 +69,10 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     private RowMapper<User> userRowMapper = ((rs, rowNum) -> {
-       return new User(rs.getInt("USER_ID"),
-               rs.getString("FIRST_NAME"),
-               rs.getString("LAST_NAME"),
-               rs.getString("EMAIL"),
-               rs.getString("PASSWORD"));
+        return new User(rs.getInt("USER_ID"),
+                rs.getString("FIRST_NAME"),
+                rs.getString("LAST_NAME"),
+                rs.getString("EMAIL"),
+                rs.getString("PASSWORD"));
     });
 }
