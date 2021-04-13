@@ -37,7 +37,7 @@ public class CategoryRepositoryImpl implements CategoryRepository {
 
     @Override
     public List<Category> findAll(Integer userId) throws EtResourceNotFoundException {
-        return null;
+        return jdbcTemplate.query(SQL_FIND_ALL, new Object[]{userId}, categoryRowMapper);
     }
 
     @Override
@@ -68,7 +68,11 @@ public class CategoryRepositoryImpl implements CategoryRepository {
 
     @Override
     public void update(Integer userId, Integer categoryId, Category category) throws EtBadRequestException {
-
+        try {
+            jdbcTemplate.update(SQL_UPDATE, new Object[]{category.getTitle(), category.getDescription(), userId, categoryId});
+        } catch (Exception e) {
+            throw new EtBadRequestException("Invalid request");
+        }
     }
 
     @Override
