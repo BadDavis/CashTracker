@@ -77,7 +77,12 @@ public class CategoryRepositoryImpl implements CategoryRepository {
 
     @Override
     public void removeById(Integer userId, Integer categoryId) {
+        this.removeAllTransactions(categoryId);
+        jdbcTemplate.update(SQL_DELETE_CATEGORY, new Object[]{userId, categoryId});
+    }
 
+    private void removeAllTransactions(Integer categoryId) {
+        jdbcTemplate.update(SQL_DELETE_ALL_TRANSACTIONS, new Object[]{categoryId});
     }
 
     private RowMapper<Category> categoryRowMapper = (((resultSet, rowNum) -> {
